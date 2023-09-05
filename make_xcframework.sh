@@ -1,7 +1,6 @@
 #!/bin/bash
 
 BUILD_DIRECTORY="Build"
-CARTHAGE_XCFRAMEWORK_DIRECTORY="Carthage/Build/"
 
 function archive_project() {
   project_name=$1
@@ -19,9 +18,9 @@ function archive_project() {
 
   # Archive iOS Simulator project.
   xcodebuild archive\
-     -project "../$project_name.xcodeproj"\
+     -project "../$project_name-sim.xcodeproj"\
      -scheme "$framework_name"\
-     -configuration "Simulator Release"\
+     -configuration "Release"\
      -destination "generic/platform=iOS Simulator"\
      -archivePath "$framework_name.framework-iphonesimulator.xcarchive"\
      SKIP_INSTALL=NO\
@@ -49,18 +48,24 @@ function create_xcframework() {
 }
 
 function prepare() {
-  # Install Google Maps SDK for iOS.
-  carthage update
-
   # Create Build directory if not existing.
   if [ ! -d "$BUILD_DIRECTORY" ]; then
     mkdir $BUILD_DIRECTORY
   fi
+
+  # Download google frameworks via Pods
+  pod install
+  # Installing pods changes our project, return it back to original version
+  git checkout HEAD -- GoogleMaps.xcodeproj/project.pbxproj
 }
 
 function cleanup() {
-  rm -r *.xcframework
-  rm -r *.xcarchive
+  rm -r $BUILD_DIRECTORY/*.xcframework
+  rm -r $BUILD_DIRECTORY/*.xcarchive
+
+  rm -r Pods
+  rm Podfile.lock
+  rm -r GoogleMaps.xcworkspace
 }
 
 function print_completion_message() {
@@ -78,6 +83,8 @@ function build_xcproject_project() {
   create_xcframework "GoogleMaps" "GoogleMapsM4B"
   create_xcframework "GoogleMaps" "GooglePlaces"
 
+  cd ..
+
   cleanup
 }
 
@@ -90,7 +97,7 @@ function help() {
   echo
 }
 
-while getopts ":hxg" flag; do
+while getopts ":hx" flag; do
    case "${flag}" in
       h) # display Help
         help
